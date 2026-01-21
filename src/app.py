@@ -68,14 +68,10 @@ def meme_rand():
     Returns:
         Rendered template with the generated meme.
     """
-
-    # @TODO:
-    # Use the random python standard library class to:
-    # 1. select a random image from imgs array
-    # 2. select a random quote from the quotes array
-
-    img = None
-    quote = None
+    # Select a random image and quote
+    img = random.choice(imgs)
+    quote = random.choice(quotes)
+    
     path = meme.make_meme(img, quote.body, quote.author)
     return render_template('meme.html', path=path)
 
@@ -146,13 +142,6 @@ def meme_post():
                 os.remove(tmp_img_path)
             except Exception:
                 pass
-    # 1. Use requests to save the image from the image_url
-    #    form param to a temp local file.
-    # 2. Use the meme object to generate a meme using this temp
-    #    file and the body and author form paramaters.
-    # 3. Remove the temporary saved image.
-
-    path = None
 
     return render_template('meme.html', path=path)
 

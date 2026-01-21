@@ -24,6 +24,95 @@ class MemeEngine:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
+    def _load_image(self, img_path: str) -> Image:
+        """Load an image from disk.
+        
+        Args:
+            img_path: Path to the input image file.
+            
+        Returns:
+            Loaded PIL Image object.
+        """
+        return Image.open(img_path)
+
+    def _resize_image(self, img: Image, max_width: int) -> Image:
+        """Resize image to max width while maintaining aspect ratio.
+        
+        Args:
+            img: PIL Image object to resize.
+            max_width: Maximum width for the output image.
+            
+        Returns:
+            Resized PIL Image object.
+        """
+        if img.width > max_width:
+            ratio = max_width / float(img.width)
+            height = int(ratio * float(img.height))
+            img = img.resize((max_width, height), Image.LANCZOS)
+        return img
+
+    def _get_font(self, size: int = 20) -> ImageFont:
+        """Load font, falling back to default if unavailable.
+        
+        Args:
+            size: Font size in points.
+            
+        Returns:
+            ImageFont object.
+        """
+        try:
+            return ImageFont.truetype('arial.ttf', size)
+        except Exception:
+            return ImageFont.load_default()
+
+    def _draw_text_with_outline(self, draw: ImageDraw, position: tuple,
+                                 text: str, font: ImageFont):
+        """Draw text with outline for visibility.
+        
+        Args:
+            draw: ImageDraw object to draw on.
+            position: (x, y) tuple for text position.
+            text: Text string to draw.
+            font: ImageFont to use for drawing.
+        """
+        x, y = position
+        outline_color = (0, 0, 0)
+        text_color = (255, 255, 255)
+
+        for adj_x in range(-2, 3):
+            for adj_y in range(-2, 3):
+                draw.text((x + adj_x, y + adj_y), text,
+                         font=font, fill=outline_color)
+        draw.text(position, text, font=font, fill=text_color)
+
+    def _get_random_position(self, img: Image, margin: int = 10) -> tuple:
+        """Calculate random position for text placement.
+        
+        Args:
+            img: PIL Image object to place text on.
+            margin: Margin from edges in pixels.
+            
+        Returns:
+            (x, y) tuple for text position.
+        """
+        max_y = img.height - 100
+        y = random.randint(margin, max_y)
+        return (margin, y)
+
+    def _save_image(self, img: Image) -> str:
+        """Save image to output directory with random filename.
+        
+        Args:
+            img: PIL Image object to save.
+            
+        Returns:
+            Path to the saved image file.
+        """
+        filename = f'meme_{random.randint(0, 1000000)}.jpg'
+        out_path = os.path.join(self.output_dir, filename)
+        img.save(out_path)
+        return out_path
+
     def make_meme(self, img_path: str, text: str, author: str, 
                   width: int = 500) -> str:
         """Generate a meme with quote text on an image.
@@ -45,67 +134,20 @@ class MemeEngine:
             Exception: If the image cannot be loaded or processed.
         """
         try:
-            # Load the image
-            img = Image.open(img_path)
-            
-            # Resize image if width is larger than specified
-            if img.width > width:
-                ratio = width / float(img.width)
-                height = int(ratio * float(img.height))
-                img = img.resize((width, height), Image.LANCZOS)
-            
-            # Prepare to draw text
+            # Load and resize
+            img = self._load_image(img_path)
+            img = self._resize_image(img, width)
+
+            # Add text
             draw = ImageDraw.Draw(img)
-            
-            # Try to load a font, fall back to default if not available
-            try:
-                font_size = 20
-                font = ImageFont.truetype('arial.ttf', font_size)
-            except Exception:
-                # Use default font if arial is not available
-                font = ImageFont.load_default()
-            
-            # Format the quote text
-            quote_text = f'"{text}"'
-            author_text = f'- {author}'
-            
-            # Calculate text positions (random Y position for variety)
-            img_width, img_height = img.size
-            margin = 10
-            y_position = random.randint(margin, img_height - 100)
-            
-            # Draw quote text with outline for better visibility
-            text_color = (255, 255, 255)  # White
-            outline_color = (0, 0, 0)  # Black
-            
-            # Draw text outline
-            for adj_x in range(-2, 3):
-                for adj_y in range(-2, 3):
-                    draw.text((margin + adj_x, y_position + adj_y), 
-                             quote_text, font=font, fill=outline_color)
-            
-            # Draw main text
-            draw.text((margin, y_position), quote_text, 
-                     font=font, fill=text_color)
-            
-            # Draw author text
-            y_position += 25
-            for adj_x in range(-2, 3):
-                for adj_y in range(-2, 3):
-                    draw.text((margin + adj_x, y_position + adj_y), 
-                             author_text, font=font, fill=outline_color)
-            
-            draw.text((margin, y_position), author_text, 
-                     font=font, fill=text_color)
-            
-            # Generate output filename
-            out_filename = f'meme_{random.randint(0, 1000000)}.jpg'
-            out_path = os.path.join(self.output_dir, out_filename)
-            
-            # Save the image
-            img.save(out_path)
-            
-            return out_path
+            font = self._get_font()
+            x, y = self._get_random_position(img)
+
+            # Draw quote and author
+            self._draw_text_with_outline(draw, (x, y), f'"{text}"', font)
+            self._draw_text_with_outline(draw, (x, y + 25), f'- {author}', font)
+
+            return self._save_image(img)
             
         except Exception as e:
             raise Exception(f'Error creating meme: {str(e)}')
